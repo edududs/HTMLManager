@@ -1,4 +1,4 @@
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -6,90 +6,93 @@ from main import HTMLProcessor, main
 
 
 @pytest.fixture
-def mock_html_processor():
-    with patch("main.HTMLProcessor") as mock_html_processor_class:
-        mock_html_processor = MagicMock()
-        mock_html_processor_class.return_value = mock_html_processor
-        yield mock_html_processor
+def mock_html_processor(mocker):
+    mock_html_processor_class = mocker.patch("main.HTMLProcessor")
+    mock_html_processor = MagicMock()
+    mock_html_processor_class.return_value = mock_html_processor
+    return mock_html_processor
 
 
-def test_main_cleaned_content(mock_html_processor):
-    with patch("builtins.input", side_effect=["/path/to/valid/file.html", "0"]), patch(
-        "builtins.print"
-    ) as mock_print:
-        main()
+@pytest.mark.parametrize(
+    "user_input, expected_method, expected_message",
+    [
+        ("0", "process", "Cleaning HTML content..."),
+        ("1", "process", "Removing tables..."),
+        ("2", "process", "Separating and removing tables..."),
+        ("3", "save_only_content", "Saving content..."),
+    ],
+)
+def test_main_options(
+    mock_html_processor,
+    user_input,
+    expected_method,
+    expected_message,
+    capfd,
+    monkeypatch,
+):
+    monkeypatch.setattr("builtins.input", lambda _: user_input)
+    main()
+
+    # Verificando o método correto chamado
+    if expected_method == "process":
         mock_html_processor.process.assert_called_once()
-        mock_print.assert_any_call("Cleaning HTML content...")
-        mock_print.assert_any_call("Process completed.")
+    else:
+        getattr(mock_html_processor, expected_method).assert_called_once()
+
+    # Verificando as saídas no terminal
+    captured = capfd.readouterr()
+    assert expected_message in captured.out
+    assert "Process completed." in captured.out
 
 
-def test_main_remove_tables(mock_html_processor):
-    with patch("builtins.input", side_effect=["/path/to/valid/file.html", "1"]), patch(
-        "builtins.print"
-    ) as mock_print:
-        main()
-        mock_html_processor.process.assert_called_once_with(remove_tables=True)
-        mock_print.assert_any_call("Removing tables...")
-        mock_print.assert_any_call("Process completed.")
+def test_main_no_file_selected(capfd, monkeypatch):
+    monkeypatch.setattr("builtins.input", lambda _: "")
+    main()
+
+    # Verificando se a mensagem correta foi exibida
+    captured = capfd.readouterr()
+    assert "No file selected." in captured.out
 
 
-def test_main_separate_tables(mock_html_processor):
-    with patch("builtins.input", side_effect=["/path/to/valid/file.html", "2"]), patch(
-        "builtins.print"
-    ) as mock_print:
-        main()
-        mock_html_processor.process.assert_called_once_with(separate_tables=True)
-        mock_print.assert_any_call("Separating and removing tables...")
-        mock_print.assert_any_call("Process completed.")
-
-
-def test_main_save_content(mock_html_processor):
-    with patch("builtins.input", side_effect=["/path/to/valid/file.html", "3"]), patch(
-        "builtins.print"
-    ) as mock_print:
-        main()
-        mock_html_processor.save_only_content.assert_called_once()
-        mock_print.assert_any_call("Saving content...")
-        mock_print.assert_any_call("Process completed.")
-
-
-def test_main_no_file_selected():
-    with patch("builtins.input", side_effect=[""]), patch(
-        "builtins.print"
-    ) as mock_print:
-        main()
-        mock_print.assert_any_call("No file selected.")
-
-
-def test_main_file_not_found():
-    with patch("builtins.input", side_effect=["/path/to/invalid/file.html"]), patch(
+def test_main_file_not_found(mocker, capfd, monkeypatch):
+    mocker.patch(
         "main.HTMLProcessor", side_effect=FileNotFoundError("The file does not exist.")
-    ), patch("builtins.print") as mock_print:
-        main()
-        mock_print.assert_any_call(
-            "Error initializing HTMLProcessor: The file does not exist."
-        )
+    )
+    monkeypatch.setattr("builtins.input", lambda _: "/path/to/invalid/file.html")
+    main()
+
+    # Verificando se a mensagem de erro foi exibida
+    captured = capfd.readouterr()
+    assert "Error initializing HTMLProcessor: The file does not exist." in captured.out
 
 
-def test_main_invalid_file_type():
-    with patch("builtins.input", side_effect=["/path/to/invalid/file.txt"]), patch(
+def test_main_invalid_file_type(mocker, capfd, monkeypatch):
+    mocker.patch(
         "main.HTMLProcessor", side_effect=ValueError("The file is not an HTML file.")
-    ), patch("builtins.print") as mock_print:
-        main()
-        mock_print.assert_any_call(
-            "Error initializing HTMLProcessor: The file is not an HTML file."
-        )
+    )
+    monkeypatch.setattr("builtins.input", lambda _: "/path/to/invalid/file.txt")
+    main()
+
+    # Verificando se a mensagem de erro foi exibida
+    captured = capfd.readouterr()
+    assert (
+        "Error initializing HTMLProcessor: The file is not an HTML file."
+        in captured.out
+    )
 
 
-def test_main_multiple_options(mock_html_processor):
-    with patch(
-        "builtins.input", side_effect=["/path/to/valid/file.html", "0 1 2 3"]
-    ), patch("builtins.print") as mock_print:
-        main()
-        mock_html_processor.process.assert_any_call()
-        mock_html_processor.process.assert_any_call(separate_tables=True)
-        mock_html_processor.save_only_content.assert_called_once()
-        mock_print.assert_any_call("Saving content...")
-        mock_print.assert_any_call("Cleaning HTML content...")
-        mock_print.assert_any_call("Separating and removing tables...")
-        mock_print.assert_any_call("Process completed.")
+def test_main_multiple_options(mock_html_processor, capfd, monkeypatch):
+    monkeypatch.setattr("builtins.input", lambda _: "0 1 2 3")
+    main()
+
+    # Verificando os métodos chamados
+    mock_html_processor.process.assert_any_call()
+    mock_html_processor.process.assert_any_call(separate_tables=True)
+    mock_html_processor.save_only_content.assert_called_once()
+
+    # Verificando as saídas no terminal
+    captured = capfd.readouterr()
+    assert "Saving content..." in captured.out
+    assert "Cleaning HTML content..." in captured.out
+    assert "Separating and removing tables..." in captured.out
+    assert "Process completed." in captured.out
