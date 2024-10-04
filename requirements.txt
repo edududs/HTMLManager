@@ -1,2 +1,3 @@
 trafilatura
 beautifulsoup4
+pytest
