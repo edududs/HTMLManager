@@ -65,12 +65,22 @@ class Cleaner:
         remove_imgs: bool = True,
         clean_empty_tables: bool = True,
         wrap_images: bool = True,
-    ):
+    ) -> BeautifulSoup:
         """
         Cleans the HTML content following a specific order:
         - First removes 'lang' attributes and empty tables.
         - Then wraps paragraphs containing images in a div with the 'exercise' class.
         - Finally, removes images (after paragraph modification).
+
+        Args:
+            remove_lang (bool): Indicates if 'lang' attributes should be removed.
+            remove_spans (bool): Indicates if <span> tags should be removed.
+            remove_imgs (bool): Indicates if <img> tags should be removed.
+            clean_empty_tables (bool): Indicates if empty <table> tags should be removed.
+            wrap_images (bool): Indicates if paragraphs containing images should be wrapped in a div.
+
+        Returns:
+            BeautifulSoup: The cleaned HTML content.
         """
         if remove_lang:
             self.remove_lang_attributes()
@@ -189,23 +199,32 @@ class HTMLProcessor:
             print("No tables found to separate.")
             return
 
-        tables_content = "\n".join(str(table) for table in tables)
+        tables_content = self._get_tables_content(tables)
         tables_soup = BeautifulSoup(tables_content, "html.parser")
 
-        base_name = "tables"
-        extension = ".html"
-
-        for index in count(1):
-            new_file_path = FILES / f"{base_name}-{index}{extension}"
-            if not new_file_path.exists():
-                break
-
+        new_file_path = self._generate_unique_file_path("tables", ".html")
         self._write_to_file(new_file_path, str(tables_soup))
         print(f"Tables saved as: {new_file_path}")
 
         # Remove the tables from the original file
         for table in tables:
             table.decompose()
+
+    def _get_tables_content(self, tables) -> str:
+        """
+        Joins the HTML content of all tables into a single string.
+        """
+        return "\n".join(str(table) for table in tables)
+
+    def _generate_unique_file_path(self, base_name: str, extension: str) -> Path:
+        """
+        Generates a unique file path by appending an incrementing index to the base name.
+        """
+        for index in count(1):
+            new_file_path = FILES / f"{base_name}-{index}{extension}"
+            if not new_file_path.exists():
+                return new_file_path
+        return FILES / f"{base_name}-1{extension}"
 
     def save_only_content(self) -> None:
         """
@@ -244,10 +263,8 @@ class HTMLProcessor:
 
 
 def main():
-    file_path = input("Enter the path to the HTML file: ")
-
+    file_path = get_file_path()
     if not file_path:
-        print("No file selected.")
         return
 
     try:
@@ -256,6 +273,24 @@ def main():
         print(f"Error initializing HTMLProcessor: {init_error}")
         return
 
+    enabled_options = get_user_options()
+    if "4" in enabled_options:
+        print("Exiting...")
+        return
+
+    process_options = map_options(enabled_options)
+    execute_processing(html_processor, process_options)
+    print("Process completed.")
+
+
+def get_file_path() -> str:
+    file_path = input("Enter the path to the HTML file: ")
+    if not file_path:
+        print("No file selected.")
+    return file_path
+
+
+def get_user_options() -> set:
     menu_options = {
         "0": "Just cleaned HTML content",
         "1": "Remove tables",
@@ -268,31 +303,35 @@ def main():
     for key, description in menu_options.items():
         print(f"{key}. {description}")
 
-    enabled_options = input(
-        "\nEnter the numbers of the desired options (e.g., 0 3): "
-    ).split()
+    return set(
+        input("\nEnter the numbers of the desired options (e.g., 0 3): ").split()
+    )
 
-    cleaned_content = "0" in enabled_options
-    remove_tables = "1" in enabled_options
-    separate_tables = "2" in enabled_options
-    save_content = "3" in enabled_options
 
-    if save_content:
+def map_options(enabled_options: set) -> dict:
+    return {
+        "remove_tables": "1" in enabled_options,
+        "separate_tables": "2" in enabled_options,
+        "separate_content": "3" in enabled_options,
+        "wrap_images": "0" in enabled_options,
+    }
+
+
+def execute_processing(html_processor: HTMLProcessor, process_options: dict) -> None:
+    if process_options["separate_content"]:
         print("Saving content...")
         html_processor.save_only_content()
 
-    if cleaned_content:
+    if process_options["wrap_images"]:
         print("Cleaning HTML content...")
         html_processor.process()
 
-    if separate_tables:
+    if process_options["separate_tables"]:
         print("Separating and removing tables...")
         html_processor.process(separate_tables=True)
-    elif remove_tables:
+    elif process_options["remove_tables"]:
         print("Removing tables...")
         html_processor.process(remove_tables=True)
-
-    print("Process completed.")
 
 
 if __name__ == "__main__":
