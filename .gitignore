@@ -1,0 +1,49 @@
+# Ignore Visual Studio Code files
+.vscode/
+.vscode/*
+# Ignore mypy cache
+.mypy_cache/
+# Ignore Python files
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyc
+*.pyo
+*.pyd
+*.pyp
+*.pyt
+*.pyw
+*.pyz
+*.pyzw
+*.pyo
+*.pyd
+*.pyp
+*.pyt
+*.pyw
+*.pyz
+*.pyzw
+*.pyo
+*.pyd
+*.pyp
+*.pyt
+*.pyw
+*.pyz
+*.pyzw
+
+# Ignore virtual environments
+env/
+venv/
+ENV/
+ENV*/
+venv*/
+env*/
+
+# Ignore Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# Ignore macOS system files
+.DS_Store
+
+# Ignore the gitignore file itself
+*.html

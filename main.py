@@ -11,7 +11,7 @@ except ImportError as e:
     print("\033[96m" + "pip install -r requirements.txt" + "\033[0m")
 
 BASE_DIR = Path(__file__).resolve().parent
-FILES = BASE_DIR / "files"
+FILES = Path.home() / "Documents"
 
 os.makedirs(FILES, exist_ok=True)
 
@@ -335,13 +335,11 @@ def execute_processing(html_processor: HTMLProcessor, process_options: dict) -> 
 
 
 if __name__ == "__main__":
-    # HTMLProcessor(
-    #     Path("path/to/your/file.html")
-    # ).process()  # Just clean the HTML content
+    HTMLProcessor("cad_mat.html").process()  # Just clean the HTML content
     # HTMLProcessor(Path("path/to/your/file.html")).process(remove_tables=True)   # Remove tables
     # HTMLProcessor(Path("path/to/your/file.html")).process(separate_tables=True)   # Separate tables
     # HTMLProcessor(Path("path/to/your/file.html")).process(separate_content=True)   # Save only the content
-    try:
-        main()
-    except Exception as unexpected_error:
-        print(f"Unexpected error: {unexpected_error}")
+    # try:
+    #     main()
+    # except Exception as unexpected_error:
+    #     print(f"Unexpected error: {unexpected_error}")
