@@ -37,6 +37,15 @@ class Cleaner:
         for tag in self.content.find_all("img"):
             tag.decompose()
 
+    def wrap_paragraph_with_div(self) -> None:
+        """
+        Identifies paragraphs containing images, removes the images, and wraps the paragraph in a div with the class 'exercise'.
+        """
+        for paragraph in self.content.find_all("p"):
+            if paragraph.find("img"):
+                div_wrapper = self.content.new_tag("div", **{"class": "exercise"})
+                paragraph.wrap(div_wrapper)
+
     def clean_empty_tables(self) -> None:
         """
         Removes empty <table> tags from the HTML content.
@@ -55,15 +64,24 @@ class Cleaner:
         remove_spans: bool = True,
         remove_imgs: bool = True,
         clean_empty_tables: bool = True,
+        wrap_images: bool = True,
     ):
+        """
+        Cleans the HTML content following a specific order:
+        - First removes 'lang' attributes and empty tables.
+        - Then wraps paragraphs containing images in a div with the 'exercise' class.
+        - Finally, removes images (after paragraph modification).
+        """
         if remove_lang:
             self.remove_lang_attributes()
+        if clean_empty_tables:
+            self.clean_empty_tables()
+        if wrap_images:
+            self.wrap_paragraph_with_div()  # Wrap paragraphs before removing images
         if remove_spans:
             self.remove_spans_tags()
         if remove_imgs:
             self.remove_imgs_tags()
-        if clean_empty_tables:
-            self.clean_empty_tables()
 
         print("Cleaned HTML content.")
         return self.content
@@ -116,13 +134,12 @@ class HTMLProcessor:
         with open(self.file_path, "r", encoding="utf-8") as f:
             html_content = f.read()
 
-        extracted_content = trafilatura.extract(html_content)
-        if not extracted_content:
+        if extracted_content := trafilatura.extract(html_content):
+            return extracted_content
+        else:
             raise ValueError(
                 f"Could not extract content from {self.file_path} using trafilatura."
             )
-
-        return extracted_content
 
     def get_paragraphs_with_images(self) -> list:
         """
@@ -131,11 +148,9 @@ class HTMLProcessor:
         Returns:
             list: Paragraph elements with images.
         """
-        paragraphs_with_images = []
-        for paragraph in self.file.find_all("p"):
-            if paragraph.find("img"):
-                paragraphs_with_images.append(paragraph)
-        return paragraphs_with_images
+        return [
+            paragraph for paragraph in self.file.find_all("p") if paragraph.find("img")
+        ]
 
     def _write_to_file(self, path: Path, content: str) -> None:
         """
@@ -207,6 +222,7 @@ class HTMLProcessor:
         remove_tables: bool = False,
         separate_tables: bool = False,
         separate_content: bool = False,
+        wrap_images: bool = True,
     ) -> None:
         """
         Processes the HTML content according to the provided options.
@@ -214,8 +230,9 @@ class HTMLProcessor:
             remove_tables (bool): Indicates if tables should be removed.
             remove_images (bool): Indicates if images should be removed.
             remove_spans (bool): Indicates if <span> tags should be removed.
+            wrap_images (bool): Indicates if paragraphs containing images should be wrapped in a div.
         """
-        self.cleaner.clean()
+        self.cleaner.clean(wrap_images=wrap_images)
         if separate_content:
             self.save_only_content()
         if separate_tables:
