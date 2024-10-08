@@ -20,6 +20,20 @@ class Cleaner:
     def __init__(self, content):
         self.content = content
 
+    def remove_all_classes(self) -> None:
+        """
+        Removes all classes from the HTML content.
+        """
+        for tag in self.content.find_all(class_=True):
+            del tag["class"]
+
+    def remove_all_ids(self) -> None:
+        """
+        Removes all IDs from the HTML content.
+        """
+        for tag in self.content.find_all(id=True):
+            del tag["id"]
+
     def remove_lang_attributes(self) -> None:
         """Removes the 'lang' attribute from all tags in the parsed HTML file."""
         for tag in self.content.find_all(lang=True):
@@ -58,13 +72,37 @@ class Cleaner:
             ):
                 table.decompose()
 
+    def clean_empty_colgroups(self) -> None:
+        """
+        Removes empty <colgroup> tags from the HTML content.
+        A colgroup is considered empty if it does not contain any <col> tags.
+        """
+        for colgroup in self.content.find_all("colgroup"):
+            if not colgroup.find_all("col"):
+                colgroup.decompose()
+
+    def remove_unnecessary_div_wrappers(self) -> None:
+        """
+        Removes <div> tags that do not have any attributes (like class or id) and only wrap other <div> elements.
+        """
+        for div in self.content.find_all("div"):
+            if (
+                not div.attrs
+                and len(div.contents) == 1
+                and div.contents[0].name == "div"
+            ):
+                div.unwrap()
+
     def clean(
         self,
         remove_lang: bool = True,
         remove_spans: bool = True,
         remove_imgs: bool = True,
         clean_empty_tables: bool = True,
+        clean_empty_colgroups: bool = True,
         wrap_images: bool = True,
+        remove_classes: bool = True,
+        remove_ids: bool = True,
     ) -> BeautifulSoup:
         """
         Cleans the HTML content following a specific order:
@@ -77,6 +115,7 @@ class Cleaner:
             remove_spans (bool): Indicates if <span> tags should be removed.
             remove_imgs (bool): Indicates if <img> tags should be removed.
             clean_empty_tables (bool): Indicates if empty <table> tags should be removed.
+            clean_empty_colgroups (bool): Indicates if empty <colgroup> tags should be removed.
             wrap_images (bool): Indicates if paragraphs containing images should be wrapped in a div.
 
         Returns:
@@ -86,12 +125,20 @@ class Cleaner:
             self.remove_lang_attributes()
         if clean_empty_tables:
             self.clean_empty_tables()
+        if clean_empty_colgroups:
+            self.clean_empty_colgroups()
+        if remove_classes:
+            self.remove_all_classes()
+        if remove_ids:
+            self.remove_all_ids()
         if wrap_images:
             self.wrap_paragraph_with_div()  # Wrap paragraphs before removing images
         if remove_spans:
             self.remove_spans_tags()
         if remove_imgs:
             self.remove_imgs_tags()
+
+        self.remove_unnecessary_div_wrappers()
 
         print("Cleaned HTML content.")
         return self.content
