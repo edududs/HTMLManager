@@ -20,6 +20,32 @@ class Cleaner:
     def __init__(self, content):
         self.content = content
 
+    def remove_empty_tags(self) -> None:
+        """
+        Removes empty tags from the HTML content.
+        A tag is considered empty if it does not contain any text content.
+        """
+        for tag in self.content.find_all():
+            if not tag.get_text(strip=True):
+                tag.decompose()
+
+    def remove_all_divs(self) -> None:
+        """
+        Removes all <div> tags from the HTML content.
+        """
+        for div in self.content.find_all("div"):
+            div.unwrap()
+
+    def remove_answers(self) -> None:
+        """
+        Removes answers from the HTML content.
+        """
+        for paragraph in self.content.find_all("p"):
+            if paragraph.get_text().strip().startswith(
+                "Resposta pe"
+            ) or paragraph.get_text().strip().startswith("Respostas pe"):
+                paragraph.decompose()
+
     def remove_all_classes(self) -> None:
         """
         Removes all classes from the HTML content.
@@ -81,18 +107,6 @@ class Cleaner:
             if not colgroup.find_all("col"):
                 colgroup.decompose()
 
-    def remove_unnecessary_div_wrappers(self) -> None:
-        """
-        Removes <div> tags that do not have any attributes (like class or id) and only wrap other <div> elements.
-        """
-        for div in self.content.find_all("div"):
-            if (
-                not div.attrs
-                and len(div.contents) == 1
-                and div.contents[0].name == "div"
-            ):
-                div.unwrap()
-
     def clean(
         self,
         remove_lang: bool = True,
@@ -121,6 +135,7 @@ class Cleaner:
         Returns:
             BeautifulSoup: The cleaned HTML content.
         """
+        self.remove_all_divs()
         if remove_lang:
             self.remove_lang_attributes()
         if clean_empty_tables:
@@ -138,7 +153,9 @@ class Cleaner:
         if remove_imgs:
             self.remove_imgs_tags()
 
-        self.remove_unnecessary_div_wrappers()
+        self.remove_answers()
+
+        self.remove_empty_tags()
 
         print("Cleaned HTML content.")
         return self.content
