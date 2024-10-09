@@ -1,4 +1,2 @@
 trafilatura
 beautifulsoup4
-pytest
-pytest-mock
